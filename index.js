@@ -1,4 +1,3 @@
-const childProcess = require("child_process");
 const crypto = require("crypto");
 const fs = require("fs");
 const https = require("https");
@@ -9,31 +8,31 @@ const forEachRow = require("notion-for-each-row");
 const katex = require("katex");
 const Prism = require("prismjs");
 const loadLanguages = require("prismjs/components/");
+const gitRev = require("git-rev-sync");
+const nunjucks = require("nunjucks");
 
 const fsPromises = fs.promises;
 
-loadLanguages([
-  "ocaml",
-  "scheme",
-  "diff",
-  "shell",
-  "docker",
-  "typescript",
-  "prolog",
-]);
+// if config.json exists, use that. otherwise use config.example.json. doesn't do merging. doesn't do validation. it's great.
+let config = {}
+if(fs.existsSync('config.json')) config = JSON.parse(fs.readFileSync('config.json'))
+else if(fs.existsSync('config.example.json')) config = JSON.parse(fs.readFileSync('config.example.json'))
 
-const sha = childProcess
-  .execSync("git rev-parse HEAD", { cwd: __dirname })
-  .toString()
-  .trim();
+// tell prism (syntax highlighter) to use the languages in config.prism.loadLanguages
+loadLanguages(config.prism.loadLanguages);
+
 let id = 1;
 function getDeterministicUUID() {
+  // grab the sha of the current commit
+  const currentCommitSha = gitRev.long()
+
   const shasum = crypto.createHash("sha1");
-  shasum.update(sha);
+  shasum.update(currentCommitSha);
   shasum.update("" + id++);
   return addDashes(shasum.digest("hex"));
 }
 
+// util function, turns c3d8522062aa457ab41490c5e9929790 into c3d85220-62aa-457a-b414-90c5e9929790
 function addDashes(id) {
   return [
     id.slice(0, 8),
@@ -153,16 +152,12 @@ async function textToHtml(pageId, text, allPages) {
   }
 }
 
-const outputDir = path.join(__dirname, "build");
+// build here
+const outputDir = path.join(__dirname, config.outputDirectory);
 
+// grab the assets listed in config.copy.assets to the build directory
 async function copyStaticAssets() {
-  const assets = [
-    path.join(__dirname, "public/style.css"),
-    path.join(__dirname, "public/me.png"),
-    path.join(__dirname, "node_modules/prismjs/themes/prism-coy.css"),
-    path.join(__dirname, "node_modules/prismjs/themes/prism-tomorrow.css"),
-    path.join(__dirname, "node_modules/katex/dist/katex.min.css"),
-  ];
+  const assets = config.copy.assets.map(f => path.join(__dirname, f));
   return Promise.all(
     assets.map(async (asset) =>
       fsPromises.copyFile(asset, path.join(outputDir, path.basename(asset)))
@@ -184,72 +179,35 @@ const linkOfId = (allPages, id, args = {}) => {
 };
 
 async function savePage(
-  { id, title, favicon, headingIcon, content, filename },
+  { id, title, favicon, headingIcon, content, filename, emoji },
   backlinks,
   allPages
 ) {
-  const footer = backlinks[id]
-    ? `<footer><label>mentioned in</label><ul>${backlinks[id]
-        .sort()
-        .map((id) => `<li>${linkOfId(allPages, id)}</li>`)
-        .join("\n")}</ul></footer>`
-    : "";
+  // TODO: at some point move linkOfId to be fully in nunjucks
+  const footerBacklinks = (backlinks[id] || []).sort().map(id => linkOfId(allPages, id))
 
   const script = await fsPromises.readFile(
     path.join(__dirname, "public/script.js")
   );
 
-  const body = `
-    <!doctype html>
-    <html lang="en">
-    <head>
-      <title>${title}</title>
-      <link rel="Shortcut Icon" type="image/x-icon" href="/${favicon}" />
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
+  const body = nunjucks.render('template.html', {
+    title,
+    favicon,
+    headingIcon,
+    emoji,
+    content,
+    footerBacklinks,
 
-      <meta property="og:title" content="${title}" />
-      <meta property="og:image" content="https://cards.jordanscales.com/me.png" />
-
-      <meta name="twitter:card" content="summary" />
-      <meta name="twitter:site" content="@jdan" />
-      <meta name="twitter:title" content="${title}" />
-
-      <link rel="stylesheet" href="/style.css">
-      <link rel="preload" href="/prism-coy.css" as="style">
-      <link rel="preload" href="/prism-tomorrow.css" as="style">
-      <link id="prism" rel="stylesheet" href="/prism-coy.css">
-      <link rel="stylesheet" href="/katex.min.css">
-    </head>
-    <body>
-      <script>0</script>
-      <main class="p${id.slice(0, 8)}">
-        <header>
-          <a href="/">Home</a>
-          <button id="toggle-btn" aria-label="enable dark theme">🌙</button>
-        </header>
-        ${
-          headingIcon
-            ? `<div class="title-row">
-                ${headingIcon}
-                <h1>${title}</h1>
-              </div>`
-            : `<h1>${title}</h1>`
-        }
-        ${content}
-        ${footer}
-      </main>
-      <script>${script}</script>
-    </body>
-    </html>
-  `;
+    mainClassName: `p${id.slice(0, 8)}`,
+    config
+  })
   await fsPromises.writeFile(path.join(outputDir, filename), body);
 }
 
 function downloadImageBlock(block, blockId) {
   const filename = `${block.id}.png`;
   const dest = fs.createWriteStream(
-    path.join(__dirname, "build", `${block.id}.png`)
+    path.join(__dirname, config.outputDirectory, `${block.id}.png`)
   );
 
   return new Promise((resolve) => {
@@ -472,8 +430,8 @@ async function saveFavicon(emoji) {
   // Load all the pages
   await forEachRow(
     {
-      token: process.env["NOTION_SECRET"],
-      database: process.env["NOTION_DATABASE_ID"],
+      token: config.notion.secret,
+      database: config.notion.databaseId,
     },
     async (page, notion) => {
       const { id, icon, properties } = page;
@@ -481,7 +439,7 @@ async function saveFavicon(emoji) {
       const emoji = icon && icon.emoji;
       const title = concatenateText(properties.Name.title);
       const children = await getChildren(notion, id);
-      const favicon = await saveFavicon(emoji || "💡");
+      const favicon = await saveFavicon(emoji || config.defaultFavicon);
       const headingIcon = icon
         ? `<img width="32" height="32" alt="${icon.emoji}" src="/${favicon}" />`
         : null;

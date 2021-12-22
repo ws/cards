@@ -1,3 +1,10 @@
+This is my fork of cards. Jordan's is better. Go buy some [jordancoin](https://twitter.com/jdan/status/1473739164613029894).
+
+Some notable changes:
+  - config.json file
+  - use nunjucks for HTML templating
+  - use the git-rev-sync dependency instead of calling childprocess
+
 ## cards
 
 Turn a [Notion](https://notion.so) database into a deck of cards. I use this to power [cards.jordanscales.com](https://cards.jordanscales.com).
@@ -6,7 +13,7 @@ Turn a [Notion](https://notion.so) database into a deck of cards. I use this to 
 
 ### usage
 
-As a heads up, this barely works at all.
+As a heads up, this barely works at all. It works even less with Will's changes.
 
 - [Create a new Notion integration](https://developers.notion.com/docs/getting-started#step-1-create-an-integration)
 - Create a new database and note it's ID from the address bar
@@ -17,7 +24,14 @@ As a heads up, this barely works at all.
 ```sh
 git clone https://github.com/jdan/cards.git
 npm i
-NOTION_SECRET=[your token here] NOTION_DATABASE_ID=[your id here] node index.js
+mv config.example.json config.json
+# edit config.json with your notion secret + DB id
 npx serve build   # build/ contains everything you need
 # localhost:5000 now shows your cards
 ```
+
+### random notes
+#### how to make a homepage
+
+1) create a Notion property called "Filename"
+2) set that property to index.html

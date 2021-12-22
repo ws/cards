@@ -1,0 +1,38 @@
+{
+    "outputDirectory": "build",
+    "defaultFavicon": "💡",
+    "notion": {
+        "secret": "secret_0000000000000000000000000000000000000000000",
+        "databaseId": "00000000000000000000000000000000"
+    },
+    "prism": {
+        "loadLanguages": [
+            "ocaml",
+            "scheme",
+            "diff",
+            "shell",
+            "docker",
+            "typescript",
+            "prolog"
+        ]
+    },
+    "copy": {
+        "assets": [
+            "public/style.css",
+            "public/me.png",
+            "node_modules/prismjs/themes/prism-coy.css",
+            "node_modules/prismjs/themes/prism-tomorrow.css",
+            "node_modules/katex/dist/katex.min.css"
+        ]
+    },
+    "meta": {
+        "opengraph": {
+            "enable": true,
+            "image": "https://cards.jordanscales.com/me.png"
+        },
+        "twitter": {
+            "enable": true,
+            "site": "@jdan"
+        }
+    }
+}
