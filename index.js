@@ -13,10 +13,10 @@ const nunjucks = require("nunjucks");
 
 const fsPromises = fs.promises;
 
-// if config.json exists, use that. otherwise use config.example.json. doesn't do merging. doesn't do validation. it's great.
+// if config.json exists, use that. otherwise use config.example.json. DOES do mergin. doesn't do validation. it's great.
 let config = {}
-if(fs.existsSync('config.json')) config = JSON.parse(fs.readFileSync('config.json'))
-else if(fs.existsSync('config.example.json')) config = JSON.parse(fs.readFileSync('config.example.json'))
+if(fs.existsSync('config.example.json')) config = JSON.parse(fs.readFileSync('config.example.json'))
+if(fs.existsSync('config.json')) config = { ...config, ...JSON.parse(fs.readFileSync('config.json')) }
 
 // tell prism (syntax highlighter) to use the languages in config.prism.loadLanguages
 loadLanguages(config.prism.loadLanguages);
@@ -179,12 +179,15 @@ const linkOfId = (allPages, id, args = {}) => {
 };
 
 async function savePage(
-  { id, title, favicon, headingIcon, content, filename, emoji },
+  { id, title, favicon, content, filename, emoji },
   backlinks,
   allPages
 ) {
-  // TODO: at some point move linkOfId to be fully in nunjucks
-  const footerBacklinks = (backlinks[id] || []).sort().map(id => linkOfId(allPages, id))
+
+  const footerBacklinks = (backlinks[id] || []).sort().map(id => {
+    const page = allPages.find((entry) => entry.id === id)
+    return page
+  })
 
   const script = await fsPromises.readFile(
     path.join(__dirname, "public/script.js")
@@ -193,14 +196,15 @@ async function savePage(
   const body = nunjucks.render('template.html', {
     title,
     favicon,
-    headingIcon,
     emoji,
     content,
     footerBacklinks,
+    script,
 
     mainClassName: `p${id.slice(0, 8)}`,
     config
   })
+  
   await fsPromises.writeFile(path.join(outputDir, filename), body);
 }
 
@@ -419,6 +423,8 @@ async function saveFavicon(emoji) {
   return basename;
 }
 
+const storePagesJson = (allPages) => fsPromises.writeFile(path.join(outputDir, 'pages.json'), JSON.stringify(allPages))
+
 (async () => {
   const pages = [];
 
@@ -440,9 +446,7 @@ async function saveFavicon(emoji) {
       const title = concatenateText(properties.Name.title);
       const children = await getChildren(notion, id);
       const favicon = await saveFavicon(emoji || config.defaultFavicon);
-      const headingIcon = icon
-        ? `<img width="32" height="32" alt="${icon.emoji}" src="/${favicon}" />`
-        : null;
+
       const filename =
         (properties.Filename
           ? concatenateText(properties.Filename.rich_text)
@@ -456,7 +460,6 @@ async function saveFavicon(emoji) {
 
       pages.push({
         id,
-        headingIcon,
         favicon,
         emoji,
         title,
@@ -478,5 +481,6 @@ async function saveFavicon(emoji) {
   Promise.all([
     ...pages.map((page) => savePage(page, backlinks, pages)),
     copyStaticAssets(),
+    storePagesJson(pages)
   ]);
 })();

@@ -39,6 +39,7 @@
 		{# If this card has an emoji, include it in the title -#}
 		{% if emoji -%}
 		<div class="title-row">
+			{# TODO map emojis to alt text rather than dumping the emoji character directly -#}
 			<img width="32" height="32" alt="{{ emoji }}" src="{{ favicon }}" />
 			<h1>{{ title }}</h1>
 		</div>
@@ -49,12 +50,23 @@
 		{# TODO: Ideally move the HTML generation here at some point -#}
 		{{ content | safe }}
 
-		{# If this card is linked to from elsewhere, include a footer with links to those cards -#}
-		{# I hope to move this to Nunucks at some point #}
-		{% for footerBacklink in footerBacklinks -%}
-			{{ footerBacklink | safe }}
-		{% endfor %}
+		{% if footerBacklinks.length > 0 %}
+		<footer>
+			<label>mentioned in</label>
+				<ul>
+				{% for page in footerBacklinks -%}
+					<a href="{{ page.filename }}" {% if page.emoji -%} class="with-emoji"{%- endif -%}>
+						{%- if page.emoji -%}
+							<img class="emoji" alt="" src="/{{ page.favicon }}">
+						{%- endif -%}
+						{{- page.title -}}
+					</a>
+				{% endfor %}
+				</ul>
+		</footer>
+		{% endif %}
 	</main>
 
+	<script type="text/javascript">{{ script | safe }} </script>
   </body>
 </html>

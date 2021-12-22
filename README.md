@@ -4,6 +4,7 @@ Some notable changes:
   - config.json file
   - use nunjucks for HTML templating
   - use the git-rev-sync dependency instead of calling childprocess
+  - creates a pages.json file in the build directory with source content artifacts (just in case Notion disappears)
 
 ## cards
 
