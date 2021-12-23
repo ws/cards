@@ -6,6 +6,8 @@ Some notable changes:
   - use the git-rev-sync dependency instead of calling childprocess
   - creates a pages.json file in the build directory with source content artifacts (just in case Notion disappears)
   - emoji alt text
+  - rough callout support
+  - tweet embeds (with or without twitter styling/tracking)
 
 ## cards
 

@@ -24,6 +24,7 @@ const {
   emojiToBaseName,
   emojiToAltText,
 } = require("./lib/emoji");
+const { fetchTweetEmbedHTML } = require("./lib/twitter")
 const { NOTION_DATE_STR_REGEX } = require("./lib/consts");
 
 let id = 1;
@@ -143,7 +144,13 @@ const linkOfId = (allPages, id, args = {}) => {
     return `<a href="/${page.filename}"${
       page.emoji ? ` class="with-emoji"` : ""
     }>
-      ${page.emoji ? `<img class="emoji" alt="${page.emojiAltText || ''}" src="/${page.favicon}">` : ""}
+      ${
+        page.emoji
+          ? `<img class="emoji" alt="${page.emojiAltText || ""}" src="/${
+              page.favicon
+            }">`
+          : ""
+      }
       ${args.overwriteTitle || page.title}</a>`;
   } else {
     return `[${id}]`;
@@ -308,6 +315,28 @@ async function blockToHtml(block, pageId, allPages) {
     return "<hr />";
   } else if (block.type === "unsupported") {
     return "[unsupported]";
+  } else if (block.type === "callout") {
+    const { icon } = block.callout;
+    const text = concatenateText(block.callout.text);
+
+    return `<div class="callout">${
+      icon ? `<div style="padding: 24px;">${icon.emoji}</div>` : ""
+    }<h2>${text}</h2></div>`;
+  } else if (
+    block.type === "embed" &&
+    block.embed.url &&
+    block.embed.url.startsWith("https://twitter.com")
+  ) {
+    // TODO: better validate that this is actually a tweet link
+    // TODO: cache to tweets.json or something so I'm not hitting the twitter API on every build for every tweet
+
+    const tweetHtml = await fetchTweetEmbedHTML(block.embed.url)
+    const nonDirtyTweetHtml = tweetHtml.split('\n')[0] // strip out twitter's JS injection
+
+    // if you want stuff like RT count, like count, styling, etc. switch config.tweetEmbeds.includeExternalSrc to TRUE
+    // just note that twitter is injecting gross analytics stuff on your site
+
+    return !config.tweetEmbeds.includeExternalSrc ? nonDirtyTweetHtml : tweetHtml
   } else {
     console.log("Unrecognized block --", block);
   }

@@ -38,10 +38,13 @@ a {
   color: var(--link-color);
 }
 
+/*
+# Personal preference
 a[href^="http"]::after {
   content: "🔗";
   font-size: 14px;
 }
+*/
 
 a.with-emoji {
   display: inline-flex;
@@ -233,6 +236,15 @@ hr {
   margin: 32px 0;
   border-color: var(--link-color);
   opacity: 0.5;
+}
+
+.callout {
+  display: flex;
+  width: 100%;
+  border-radius: 3 px;
+  background: rgb(241, 241, 239);
+  padding: 16 px 16 px 16 px 12 px;
+  margin: 1 em 0;
 }
 
 @media (max-width: 660px) {
