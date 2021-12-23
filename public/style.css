@@ -34,3 +34,18 @@ eg:
   width: 1px;
   background: var(--font-color);
 } */
+
+#toggle-btn {
+  position: absolute;
+  right: 25px;
+  top: 10px;
+}
+
+/* homepage */
+#bbe65ddbd {
+  margin: 0;
+}
+
+#bbe65ddbd img {
+  width: 100px;
+}
