@@ -17,15 +17,19 @@
         ]
     },
     "copy": {
-        "assets": [
+        "css": [
+            "public/base.css",
             "public/style.css",
-            "public/me.png",
             "node_modules/prismjs/themes/prism-coy.css",
             "node_modules/prismjs/themes/prism-tomorrow.css",
             "node_modules/katex/dist/katex.min.css"
+        ],
+        "images": [
+            "public/jdan.png"
         ]
     },
     "meta": {
+        "description": "jdan!!",
         "opengraph": {
             "enable": true,
             "image": "https://cards.jordanscales.com/me.png"

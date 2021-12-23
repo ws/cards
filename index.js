@@ -122,9 +122,9 @@ async function textToHtml(pageId, text, allPages) {
 // build here
 const outputDir = path.join(__dirname, config.outputDirectory);
 
-// grab the assets listed in config.copy.assets to the build directory
+// grab the assets listed in config.copy.css and config.copy.images to the build directory
 async function copyStaticAssets() {
-  const assets = config.copy.assets.map((f) => path.join(__dirname, f));
+  const assets = [...config.copy.css, ...config.copy.images].map((f) => path.join(__dirname, f));
   return Promise.all(
     assets.map(async (asset) =>
       fsPromises.copyFile(asset, path.join(outputDir, path.basename(asset)))

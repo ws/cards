@@ -1,0 +1,272 @@
+:root {
+  --font-color: black;
+  --background-color: white;
+  --footer-label-color: #444444;
+  --dimmer: #e6e6e6;
+  --dimmest: #f6f6f6;
+  --link-color: #787672;
+  --image-width: 360px;
+}
+
+body.dark {
+  --font-color: rgba(255, 255, 255, 0.9);
+  --background-color: #2f3437;
+  --footer-label-color: #eee;
+  --dimmer: #64686a;
+  --dimmest: #464b4f;
+  --link-color: #b2b4b5;
+}
+
+body {
+  background: var(--background-color);
+  color: var(--font-color);
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  line-height: 1.4;
+}
+
+img.emoji {
+  --emoji-size: 20px;
+  width: var(--emoji-size);
+  height: var(--emoji-size);
+  vertical-align: bottom;
+}
+
+a {
+  color: var(--link-color);
+}
+
+a[href^="http"]::after {
+  content: "🔗";
+  font-size: 14px;
+}
+
+a.with-emoji {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: bottom;
+}
+
+a.with-emoji img.emoji {
+  margin-right: 4px;
+}
+
+a:visited {
+  color: var(--link-color);
+}
+
+.text {
+  margin: 1em 0;
+}
+
+.children {
+  margin-left: 1.6em;
+}
+
+pre code {
+  padding: 1em 0 !important;
+  overflow: auto;
+  display: block;
+}
+
+.text > code {
+  background: var(--dimmest);
+  font-weight: bold;
+  border-radius: 2px;
+  padding: 2px 4px;
+}
+
+figure {
+  margin: 16px auto;
+  display: flex;
+  max-width: var(--image-width);
+  flex-direction: column;
+}
+
+li figure {
+  margin: 16px 0;
+}
+
+figure img {
+  width: 100%;
+  height: auto;
+}
+
+figcaption {
+  font-size: 14px;
+  color: var(--link-color);
+  margin-top: 4px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+}
+
+#toggle-btn {
+  padding: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+main {
+  box-sizing: border-box;
+  width: 660px;
+  margin: 80px auto 40px;
+}
+
+footer {
+  padding-top: 20px;
+}
+
+ul {
+  padding-left: 1.15em;
+}
+
+ol {
+  padding-left: 1.4em;
+}
+
+ol ol li {
+  list-style-type: lower-alpha;
+}
+
+ol ol ol li {
+  list-style-type: lower-roman;
+}
+
+ol ol ol ol li {
+  list-style-type: decimal;
+}
+
+ol ol ol ol ol li {
+  list-style-type: lower-alpha;
+}
+
+ol ol ol ol ol ol li {
+  list-style-type: lower-roman;
+}
+
+.list-item {
+  padding: 3px 0;
+}
+
+footer label {
+  display: block;
+  font-size: 14px;
+  text-transform: uppercase;
+  color: var(--footer-label-color);
+  margin-bottom: 8px;
+}
+
+footer ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 10px;
+  row-gap: 10px;
+}
+
+footer ul a {
+  display: flex !important;
+  font-weight: bold;
+  padding: 10px;
+  background: var(--dimmest);
+  border-radius: 4px;
+  color: var(--font-color);
+  text-decoration: none;
+}
+
+footer ul a.with-emoji img.emoji {
+  margin-right: 8px;
+}
+
+footer ul a:hover,
+footer ul a:focus {
+  background: var(--dimmer);
+}
+
+blockquote {
+  border-left: 4px solid var(--link-color);
+  margin: 0;
+  padding: 0 14px;
+}
+
+blockquote .text {
+  margin: 0;
+  padding: 3px 2px;
+}
+
+details > :not(summary) {
+  margin-left: 16px !important;
+}
+
+:root {
+  --emoji-width: 32px;
+  --emoji-gap: 16px;
+  --heading1--margin: 1.34em;
+}
+
+.title-row {
+  display: flex;
+  margin: var(--heading1--margin) 0 var(--heading1--margin)
+    calc(-1 * (var(--emoji-gap) + var(--emoji-width)));
+  align-items: center;
+}
+
+.title-row h1 {
+  margin: 0;
+}
+
+.title-row img {
+  margin-right: var(--emoji-gap);
+  width: var(--emoji-width);
+}
+
+hr {
+  margin: 32px 0;
+  border-color: var(--link-color);
+  opacity: 0.5;
+}
+
+@media (max-width: 660px) {
+  :root {
+    --image-width: 100%;
+  }
+
+  main {
+    width: 100%;
+    margin: 0;
+    padding: 40px 20px;
+  }
+
+  .title-row {
+    align-items: flex-start;
+    flex-direction: column;
+    margin: var(--heading1--margin) 0;
+  }
+
+  .title-row h1 {
+    margin-top: 4px;
+  }
+
+  pre code {
+    font-size: 14px !important;
+  }
+
+  footer ul {
+    grid-template-columns: 1fr;
+    column-gap: 6px;
+    row-gap: 6px;
+  }
+
+  footer ul a {
+    padding: 14px;
+  }
+}
