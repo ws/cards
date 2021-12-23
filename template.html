@@ -30,10 +30,10 @@
 	{# TODO: figure out what this does -#}
 	<script>0</script>
 
-	<main class="{{ mainClassName }}">
+	<main class="p{{ id | truncate(8, true, "") }}">
 		<header>
 			<a href="/">Home</a>
-			<button id="toggle-btn" aria-label="enable dark theme">🌙</button>
+			<button id="toggle-btn" aria-label="enable dark theme" style="display: none;">🌙</button>
 		</header>
 
 		{# If this card has an emoji, include it in the title -#}

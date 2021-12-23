@@ -2,8 +2,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
-const emoji = require("node-emoji");
-const emojiUnicode = require("emoji-unicode");
+const emojiLib = require("node-emoji");
 const forEachRow = require("notion-for-each-row");
 const katex = require("katex");
 const Prism = require("prismjs");
@@ -18,8 +17,9 @@ const {
   addDashes,
   concatenateText,
   notionDateStrToRelativeStr,
-  readFile,
+  readFile
 } = require("./lib/utils");
+const { emojiToFileName, emojiToBaseName } = require("./lib/emoji")
 const { NOTION_DATE_STR_REGEX } = require("./lib/consts");
 
 let id = 1;
@@ -40,7 +40,8 @@ async function textToHtml(pageId, text, allPages) {
       .replace(/>/g, "&gt;");
 
     const emojiToLoad = new Set([]);
-    let content = emoji.replace(codeFriendly, ({ emoji }) => {
+    // v clever
+    let content = emojiLib.replace(codeFriendly, ({ emoji }) => {
       emojiToLoad.add(emoji);
       return emoji;
     });
@@ -154,9 +155,10 @@ async function savePage(
     return page;
   });
 
-  const script = readFile("public/script.js");
+  const script = await readFile("public/script.js");
 
   const body = nunjucks.render("template.html", {
+    id,
     title,
     favicon,
     emoji,
@@ -164,7 +166,6 @@ async function savePage(
     footerBacklinks,
     script,
 
-    mainClassName: `p${id.slice(0, 8)}`,
     config,
   });
 
@@ -369,15 +370,11 @@ async function getChildren(notion, id) {
 }
 
 async function saveFavicon(emoji) {
-  const codepoints = emojiUnicode(emoji).split(" ").join("-");
-  const basename = `${codepoints}.png`;
-  const filename = path.join(
-    __dirname,
-    "node_modules/emoji-datasource-apple/img/apple/64",
-    basename
-  );
+  const basename = emojiToBaseName(emoji);
+  const filename = emojiToFileName(emoji);
+  
   if (!fs.existsSync(filename)) {
-    console.log("Unknown emoji --", emoji, codepoints);
+    console.log("Unknown emoji --", emoji);
   }
   const dest = path.join(outputDir, basename);
   if (!fs.existsSync(dest)) {
@@ -408,7 +405,6 @@ const build = async () => {
   // Load all the pages
   await forEachRow({ token, database }, async (page, notion) => {
     const { id, icon, properties } = page;
-
     const emoji = icon && icon.emoji;
     const title = concatenateText(properties.Name.title);
     const children = await getChildren(notion, id);

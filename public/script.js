@@ -1,6 +1,9 @@
 let stylesheet = document.getElementById("prism");
 let toggleBtn = document.getElementById("toggle-btn");
 
+// only display the toggle button to users with JS
+toggleBtn.style.display = 'block';
+
 function setTheme(isDark) {
   if (isDark) {
     localStorage.setItem("theme", "dark");
@@ -36,4 +39,5 @@ toggleBtn.addEventListener("click", (e) => {
   e.preventDefault();
   toggleTheme();
 });
+
 setTheme(localStorage.getItem("theme") === "dark");
