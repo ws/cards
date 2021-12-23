@@ -2,71 +2,68 @@
 
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <title>{{ title }}</title>
-    <link rel="Shortcut Icon" type="image/x-icon" href="/{{ favicon }}" />
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+	<head>
+		<title>{{ title }}</title>
+		<link rel="Shortcut Icon" type="image/x-icon" href="/{{ favicon }}" />
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
 
-	{% if config.meta.description -%}
-	<meta name="description" content="{{ config.meta.description }}"/>
-	{%- endif %}
+		{% if config.meta.description -%}
+		<meta name="description" content="{{ config.meta.description }}"/>
+		{%- endif -%}
 
-	{% if config.meta.opengraph.enable -%}
-    <meta property="og:title" content="{{ title }}" />
-    {% if config.meta.opengraph.image %}<meta property="og:image" content="{{ config.meta.opengraph.image }}" />{% endif %}
-	{%- endif %}
+		{% if config.meta.opengraph.enable -%}
+		<meta property="og:title" content="{{ title }}" />
+		{% if config.meta.opengraph.image %}<meta property="og:image" content="{{ config.meta.opengraph.image }}" />{% endif %}
+		{%- endif %}
 
-	{% if config.meta.twitter.enable -%}
-    <meta name="twitter:card" content="summary" />
-	<meta name="twitter:title" content="{{ title }}" />
-    {% if config.meta.twitter.site %}<meta name="twitter:site" content="{{ config.meta.twitter.site }}" />{% endif %}
-	{%- endif %}
+		{% if config.meta.twitter.enable -%}
+		<meta name="twitter:card" content="summary" />
+		<meta name="twitter:title" content="{{ title }}" />
+		{% if config.meta.twitter.site %}<meta name="twitter:site" content="{{ config.meta.twitter.site }}" />{% endif %}
+		{%- endif %}
 
-	{% for page in config.copy.css -%}
-		<link rel="stylesheet" href="/{{ page.split('/').pop() }}">
-	{% endfor %}
-  </head>
-  <body>
-	{# TODO: figure out what this does -#}
-	<script>0</script>
+		{% for page in config.copy.css -%}
+			<link rel="stylesheet" href="/{{ page.split('/').pop() }}">
+		{% endfor -%}
+	</head>
+	<body>
+		<main class="p{{ id | truncate(8, true, "") }}">
+			<header>
+				<a href="/">Home</a>
+				<button id="toggle-btn" aria-label="enable dark theme">🌙</button>
+			</header>
 
-	<main class="p{{ id | truncate(8, true, "") }}">
-		<header>
-			<a href="/">Home</a>
-			<button id="toggle-btn" aria-label="enable dark theme" style="display: none;">🌙</button>
-		</header>
+			{# If this card has an emoji, include it in the title -#}
+			{% if emoji -%}
+			<div class="title-row">
+				<img width="32" height="32" alt="{{ emojiAltText }}" src="{{ favicon }}" />
+				<h1>{{ title }}</h1>
+			</div>
+			{% else %}
+				<h1>{{ title }}</h1>
+			{% endif %}
 
-		{# If this card has an emoji, include it in the title -#}
-		{% if emoji -%}
-		<div class="title-row">
-			<img width="32" height="32" alt="{{ emoji }}" src="{{ favicon }}" />
-			<h1>{{ title }}</h1>
-		</div>
-		{% else %}
-			<h1>{{ title }}</h1>
-		{% endif %}
+			{#- TODO: Ideally move the HTML generation here at some point -#}
+			{{ content | safe }}
 
-		{# TODO: Ideally move the HTML generation here at some point -#}
-		{{ content | safe }}
+			{% if footerBacklinks.length > 0 %}
+			<footer>
+				<label>mentioned in</label>
+					<ul>
+					{% for page in footerBacklinks -%}
+						<a href="{{ page.filename }}" {% if page.emoji -%} class="with-emoji"{%- endif -%}>
+							{%- if page.emoji -%}
+								<img class="emoji" alt="{{ page.emojiAltText }}" src="/{{ page.favicon }}">
+							{%- endif -%}
+							{{- page.title -}}
+						</a>
+					{% endfor %}
+					</ul>
+			</footer>
+			{% endif %}
+		</main>
 
-		{% if footerBacklinks.length > 0 %}
-		<footer>
-			<label>mentioned in</label>
-				<ul>
-				{% for page in footerBacklinks -%}
-					<a href="{{ page.filename }}" {% if page.emoji -%} class="with-emoji"{%- endif -%}>
-						{%- if page.emoji -%}
-							<img class="emoji" alt="" src="/{{ page.favicon }}">
-						{%- endif -%}
-						{{- page.title -}}
-					</a>
-				{% endfor %}
-				</ul>
-		</footer>
-		{% endif %}
-	</main>
-
-	<script type="text/javascript">{{ script | safe }} </script>
-  </body>
+	<script type="text/javascript" src="/frontend.js"></script>
+	</body>
 </html>

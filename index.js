@@ -9,6 +9,7 @@ const Prism = require("prismjs");
 const loadLanguages = require("prismjs/components/");
 const gitRev = require("git-rev-sync");
 const nunjucks = require("nunjucks");
+const indent = require("indent.js");
 
 const fsPromises = fs.promises;
 
@@ -17,9 +18,12 @@ const {
   addDashes,
   concatenateText,
   notionDateStrToRelativeStr,
-  readFile
 } = require("./lib/utils");
-const { emojiToFileName, emojiToBaseName } = require("./lib/emoji")
+const {
+  emojiToFileName,
+  emojiToBaseName,
+  emojiToAltText,
+} = require("./lib/emoji");
 const { NOTION_DATE_STR_REGEX } = require("./lib/consts");
 
 let id = 1;
@@ -122,9 +126,10 @@ async function textToHtml(pageId, text, allPages) {
 // build here
 const outputDir = path.join(__dirname, config.outputDirectory);
 
-// grab the assets listed in config.copy.css and config.copy.images to the build directory
+// grab the assets listed in config.copy.css, config.copy.images, config.copy.js to the build directory
 async function copyStaticAssets() {
-  const assets = [...config.copy.css, ...config.copy.images].map((f) => path.join(__dirname, f));
+  const { css, images, js } = config.copy;
+  const assets = [...css, ...images, ...js].map((f) => path.join(__dirname, f));
   return Promise.all(
     assets.map(async (asset) =>
       fsPromises.copyFile(asset, path.join(outputDir, path.basename(asset)))
@@ -138,7 +143,7 @@ const linkOfId = (allPages, id, args = {}) => {
     return `<a href="/${page.filename}"${
       page.emoji ? ` class="with-emoji"` : ""
     }>
-      ${page.emoji ? `<img class="emoji" alt="" src="/${page.favicon}">` : ""}
+      ${page.emoji ? `<img class="emoji" alt="${page.emojiAltText || ''}" src="/${page.favicon}">` : ""}
       ${args.overwriteTitle || page.title}</a>`;
   } else {
     return `[${id}]`;
@@ -146,7 +151,7 @@ const linkOfId = (allPages, id, args = {}) => {
 };
 
 async function savePage(
-  { id, title, favicon, content, filename, emoji },
+  { id, title, favicon, content, filename, emoji, emojiAltText },
   backlinks,
   allPages
 ) {
@@ -155,21 +160,22 @@ async function savePage(
     return page;
   });
 
-  const script = await readFile("public/script.js");
-
   const body = nunjucks.render("template.html", {
     id,
     title,
     favicon,
     emoji,
+    emojiAltText,
     content,
     footerBacklinks,
-    script,
 
     config,
   });
 
-  await fsPromises.writeFile(path.join(outputDir, filename), body);
+  // I don't *need* to do this, but it's a nice thing to do if anyone wants to look at HTML source
+  const formattedBody = indent.html(body);
+
+  await fsPromises.writeFile(path.join(outputDir, filename), formattedBody);
 }
 
 function downloadImageBlock(block, blockId) {
@@ -234,7 +240,7 @@ async function blockToHtml(block, pageId, allPages) {
       ${children.join("\n")}
     </li>`;
   } else if (block.type === "paragraph") {
-    return `<div class="text" id="${blockId}">
+    return `\n<div class="text" id="${blockId}">
       ${await textToHtml_(block.paragraph.text)}
       <div class="children">${children.join("\n")}</div>
     </div>`;
@@ -372,7 +378,7 @@ async function getChildren(notion, id) {
 async function saveFavicon(emoji) {
   const basename = emojiToBaseName(emoji);
   const filename = emojiToFileName(emoji);
-  
+
   if (!fs.existsSync(filename)) {
     console.log("Unknown emoji --", emoji);
   }
@@ -406,6 +412,7 @@ const build = async () => {
   await forEachRow({ token, database }, async (page, notion) => {
     const { id, icon, properties } = page;
     const emoji = icon && icon.emoji;
+    const emojiAltText = emoji ? emojiToAltText(emoji) : "";
     const title = concatenateText(properties.Name.title);
     const children = await getChildren(notion, id);
     const favicon = await saveFavicon(emoji || config.defaultFavicon);
@@ -425,6 +432,7 @@ const build = async () => {
       id,
       favicon,
       emoji,
+      emojiAltText,
       title,
       blocks,
       filename,

@@ -3,6 +3,7 @@
     "emoji-datasource-apple": "^7.0.2",
     "emoji-unicode": "^2.0.1",
     "git-rev-sync": "^3.0.1",
+    "indent.js": "^0.3.5",
     "katex": "^0.13.18",
     "node-emoji": "^1.11.0",
     "notion-for-each-row": "1.0.2",

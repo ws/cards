@@ -270,3 +270,8 @@ hr {
     padding: 14px;
   }
 }
+
+/* gets switched to display: block by JS onload since the button is useless without JS */
+#toggle-btn {
+  display: none;
+}

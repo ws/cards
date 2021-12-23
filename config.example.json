@@ -26,6 +26,9 @@
         ],
         "images": [
             "public/jdan.png"
+        ],
+        "js": [
+            "public/frontend.js"
         ]
     },
     "meta": {
