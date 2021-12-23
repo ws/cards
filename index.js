@@ -13,58 +13,24 @@ const nunjucks = require("nunjucks");
 
 const fsPromises = fs.promises;
 
-// if config.json exists, use that. otherwise use config.example.json. DOES do mergin. doesn't do validation. it's great.
-let config = {}
-if(fs.existsSync('config.example.json')) config = JSON.parse(fs.readFileSync('config.example.json'))
-if(fs.existsSync('config.json')) config = { ...config, ...JSON.parse(fs.readFileSync('config.json')) }
-
-// tell prism (syntax highlighter) to use the languages in config.prism.loadLanguages
-loadLanguages(config.prism.loadLanguages);
+const config = require("./lib/config")();
+const {
+  addDashes,
+  concatenateText,
+  notionDateStrToRelativeStr,
+  readFile,
+} = require("./lib/utils");
+const { NOTION_DATE_STR_REGEX } = require("./lib/consts");
 
 let id = 1;
 function getDeterministicUUID() {
   // grab the sha of the current commit
-  const currentCommitSha = gitRev.long()
+  const currentCommitSha = gitRev.long();
 
   const shasum = crypto.createHash("sha1");
   shasum.update(currentCommitSha);
   shasum.update("" + id++);
   return addDashes(shasum.digest("hex"));
-}
-
-// util function, turns c3d8522062aa457ab41490c5e9929790 into c3d85220-62aa-457a-b414-90c5e9929790
-function addDashes(id) {
-  return [
-    id.slice(0, 8),
-    id.slice(8, 12),
-    id.slice(12, 16),
-    id.slice(16, 20),
-    id.slice(20, 32),
-  ].join("-");
-}
-
-function concatenateText(arr) {
-  return arr.map((i) => i.text.content).join("");
-}
-
-function relativeDate(str) {
-  const [year, month, day] = str.split("-").map((i) => parseInt(i));
-
-  const date = new Date();
-  date.setFullYear(year);
-  date.setMonth(month - 1);
-  date.setDate(day);
-
-  const deltaDays = Math.round(
-    (date.getTime() - Date.now()) / (1000 * 3600 * 24)
-  );
-
-  const relative = new Intl.RelativeTimeFormat("en", {
-    numeric: "auto",
-  });
-
-  const formatted = relative.format(deltaDays, "days");
-  return formatted[0].toUpperCase() + formatted.slice(1);
 }
 
 async function textToHtml(pageId, text, allPages) {
@@ -131,8 +97,8 @@ async function textToHtml(pageId, text, allPages) {
     } else if (text.mention.type === "date") {
       const { start } = text.mention.date;
 
-      if (/^\d{4}-\d{2}-\d{2}$/.test(start)) {
-        return relativeDate(start);
+      if (NOTION_DATE_STR_REGEX.test(start)) {
+        return notionDateStrToRelativeStr(start);
       } else {
         const [date, time] = start.slice(0, 16).split("T");
 
@@ -157,7 +123,7 @@ const outputDir = path.join(__dirname, config.outputDirectory);
 
 // grab the assets listed in config.copy.assets to the build directory
 async function copyStaticAssets() {
-  const assets = config.copy.assets.map(f => path.join(__dirname, f));
+  const assets = config.copy.assets.map((f) => path.join(__dirname, f));
   return Promise.all(
     assets.map(async (asset) =>
       fsPromises.copyFile(asset, path.join(outputDir, path.basename(asset)))
@@ -183,17 +149,14 @@ async function savePage(
   backlinks,
   allPages
 ) {
+  const footerBacklinks = (backlinks[id] || []).sort().map((id) => {
+    const page = allPages.find((entry) => entry.id === id);
+    return page;
+  });
 
-  const footerBacklinks = (backlinks[id] || []).sort().map(id => {
-    const page = allPages.find((entry) => entry.id === id)
-    return page
-  })
+  const script = readFile("public/script.js");
 
-  const script = await fsPromises.readFile(
-    path.join(__dirname, "public/script.js")
-  );
-
-  const body = nunjucks.render('template.html', {
+  const body = nunjucks.render("template.html", {
     title,
     favicon,
     emoji,
@@ -202,9 +165,9 @@ async function savePage(
     script,
 
     mainClassName: `p${id.slice(0, 8)}`,
-    config
-  })
-  
+    config,
+  });
+
   await fsPromises.writeFile(path.join(outputDir, filename), body);
 }
 
@@ -423,9 +386,16 @@ async function saveFavicon(emoji) {
   return basename;
 }
 
-const storePagesJson = (allPages) => fsPromises.writeFile(path.join(outputDir, 'pages.json'), JSON.stringify(allPages))
+const storePagesJson = (allPages) =>
+  fsPromises.writeFile(
+    path.join(outputDir, "pages.json"),
+    JSON.stringify(allPages)
+  );
 
-(async () => {
+const build = async () => {
+  // tell prism (syntax highlighter) to use the languages in config.prism.loadLanguages
+  loadLanguages(config.prism.loadLanguages);
+
   const pages = [];
 
   // Make sure outputDir exists
@@ -433,41 +403,37 @@ const storePagesJson = (allPages) => fsPromises.writeFile(path.join(outputDir, '
     await fsPromises.mkdir(outputDir);
   }
 
+  const { secret: token, databaseId: database } = config.notion;
+
   // Load all the pages
-  await forEachRow(
-    {
-      token: config.notion.secret,
-      database: config.notion.databaseId,
-    },
-    async (page, notion) => {
-      const { id, icon, properties } = page;
+  await forEachRow({ token, database }, async (page, notion) => {
+    const { id, icon, properties } = page;
 
-      const emoji = icon && icon.emoji;
-      const title = concatenateText(properties.Name.title);
-      const children = await getChildren(notion, id);
-      const favicon = await saveFavicon(emoji || config.defaultFavicon);
+    const emoji = icon && icon.emoji;
+    const title = concatenateText(properties.Name.title);
+    const children = await getChildren(notion, id);
+    const favicon = await saveFavicon(emoji || config.defaultFavicon);
 
-      const filename =
-        (properties.Filename
-          ? concatenateText(properties.Filename.rich_text)
-          : "") || `${id.replace(/-/g, "").slice(0, 8)}.html`;
+    const filename =
+      (properties.Filename
+        ? concatenateText(properties.Filename.rich_text)
+        : "") || `${id.replace(/-/g, "").slice(0, 8)}.html`;
 
-      const blocks = groupBy(
-        groupBy(children, "numbered_list_item", "numbered_list"),
-        "bulleted_list_item",
-        "bulleted_list"
-      );
+    const blocks = groupBy(
+      groupBy(children, "numbered_list_item", "numbered_list"),
+      "bulleted_list_item",
+      "bulleted_list"
+    );
 
-      pages.push({
-        id,
-        favicon,
-        emoji,
-        title,
-        blocks,
-        filename,
-      });
-    }
-  );
+    pages.push({
+      id,
+      favicon,
+      emoji,
+      title,
+      blocks,
+      filename,
+    });
+  });
 
   await Promise.all(
     pages.map(async (page) => {
@@ -481,6 +447,8 @@ const storePagesJson = (allPages) => fsPromises.writeFile(path.join(outputDir, '
   Promise.all([
     ...pages.map((page) => savePage(page, backlinks, pages)),
     copyStaticAssets(),
-    storePagesJson(pages)
+    storePagesJson(pages),
   ]);
-})();
+};
+
+build();

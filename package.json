@@ -8,5 +8,8 @@
     "notion-for-each-row": "1.0.2",
     "nunjucks": "^3.2.3",
     "prismjs": "^1.25.0"
+  },
+  "devDependencies": {
+    "prettier": "2.5.1"
   }
 }
