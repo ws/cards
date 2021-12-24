@@ -1,13 +1,16 @@
 This is my fork of cards. Jordan's is better. Go buy some [jordancoin](https://twitter.com/jdan/status/1473739164613029894).
 
 Some notable changes:
-  - config.json file
-  - use nunjucks for HTML templating
-  - use the git-rev-sync dependency instead of calling childprocess
-  - creates a pages.json file in the build directory with source content artifacts (just in case Notion disappears)
-  - emoji alt text
-  - rough callout support
-  - tweet embeds (with or without twitter styling/tracking)
+
+- config.json file
+- use nunjucks for HTML templating
+- use the git-rev-sync dependency instead of calling childprocess
+- creates a pages.json file in the build directory with source content artifacts (just in case Notion disappears)
+- emoji alt text
+- rough callout support
+- link_to_page support
+- tweet embeds (with or without twitter styling/tracking) (caches to build/tweets.json)
+- footer backlink de-duplication (in case you link to the same page twice)
 
 ## cards
 
@@ -35,7 +38,8 @@ npx serve build   # build/ contains everything you need
 ```
 
 ### random notes
+
 #### how to make a homepage
 
-1) create a Notion property called "Filename"
-2) set that property to index.html
+1. create a Notion property called "Filename"
+2. set that property to index.html

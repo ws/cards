@@ -2,6 +2,7 @@
   "dependencies": {
     "emoji-datasource-apple": "^7.0.2",
     "emoji-unicode": "^2.0.1",
+    "fs-extra": "^10.0.0",
     "git-rev-sync": "^3.0.1",
     "indent.js": "^0.3.5",
     "katex": "^0.13.18",
@@ -13,6 +14,14 @@
     "request-promise": "^4.2.6"
   },
   "devDependencies": {
-    "prettier": "2.5.1"
+    "nodemon": "^2.0.15",
+    "prettier": "2.5.1",
+    "serve": "^13.0.2"
+  },
+  "scripts": {
+    "build": "node index.js",
+    "serve": "npx serve build",
+    "dev": "nodemon -i build index.js && npm run serve",
+    "nuke": "rm -rf build"
   }
 }

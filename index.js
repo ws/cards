@@ -1,6 +1,4 @@
 const crypto = require("crypto");
-const fs = require("fs");
-const https = require("https");
 const path = require("path");
 const emojiLib = require("node-emoji");
 const forEachRow = require("notion-for-each-row");
@@ -10,22 +8,25 @@ const loadLanguages = require("prismjs/components/");
 const gitRev = require("git-rev-sync");
 const nunjucks = require("nunjucks");
 const indent = require("indent.js");
-
-const fsPromises = fs.promises;
+const fse = require("fs-extra");
 
 const config = require("./lib/config")();
 const {
   addDashes,
   concatenateText,
   notionDateStrToRelativeStr,
+  downloadImageToPath,
 } = require("./lib/utils");
 const {
   emojiToFileName,
   emojiToBaseName,
   emojiToAltText,
 } = require("./lib/emoji");
-const { fetchTweetEmbedHTML } = require("./lib/twitter")
-const { NOTION_DATE_STR_REGEX } = require("./lib/consts");
+const { getTweetEmbedHTML } = require("./lib/twitter");
+const { NOTION_DATE_STR_REGEX, TWITTER_URL_REGEX } = require("./lib/consts");
+
+// build here
+const outputDir = path.join(__dirname, config.outputDirectory);
 
 let id = 1;
 function getDeterministicUUID() {
@@ -87,6 +88,7 @@ async function textToHtml(pageId, text, allPages) {
         const backlinkFriendlyId = addDashes(id);
 
         registerBacklink(pageId, backlinkFriendlyId);
+
         return linkOfId(allPages, backlinkFriendlyId, {
           overwriteTitle: content,
         });
@@ -124,16 +126,13 @@ async function textToHtml(pageId, text, allPages) {
   }
 }
 
-// build here
-const outputDir = path.join(__dirname, config.outputDirectory);
-
 // grab the assets listed in config.copy.css, config.copy.images, config.copy.js to the build directory
-async function copyStaticAssets() {
+async function copyStaticAssets(directory) {
   const { css, images, js } = config.copy;
   const assets = [...css, ...images, ...js].map((f) => path.join(__dirname, f));
   return Promise.all(
     assets.map(async (asset) =>
-      fsPromises.copyFile(asset, path.join(outputDir, path.basename(asset)))
+      fse.copy(asset, path.join(directory, path.basename(asset)))
     )
   );
 }
@@ -162,10 +161,12 @@ async function savePage(
   backlinks,
   allPages
 ) {
-  const footerBacklinks = (backlinks[id] || []).sort().map((id) => {
-    const page = allPages.find((entry) => entry.id === id);
-    return page;
-  });
+  const footerBacklinks = Array.from(backlinks[id] || [])
+    .sort()
+    .map((id) => {
+      const page = allPages.find((entry) => entry.id === id);
+      return page;
+    });
 
   const body = nunjucks.render("template.html", {
     id,
@@ -182,38 +183,27 @@ async function savePage(
   // I don't *need* to do this, but it's a nice thing to do if anyone wants to look at HTML source
   const formattedBody = indent.html(body);
 
-  await fsPromises.writeFile(path.join(outputDir, filename), formattedBody);
+  await fse.writeFile(path.join(outputDir, filename), formattedBody);
 }
 
 function downloadImageBlock(block, blockId) {
   const filename = `${block.id}.png`;
-  const dest = fs.createWriteStream(
-    path.join(__dirname, config.outputDirectory, `${block.id}.png`)
-  );
+  const destPath = path.join(outputDir, `${block.id}.png`);
 
-  return new Promise((resolve) => {
-    const caption = concatenateText(block.image.caption);
-    const html = `<figure id="${blockId}">
-      <img alt="${caption}" src="/${filename}">
-      <figcaption>${caption}</figcaption>
-    </figure>`;
+  const caption = concatenateText(block.image.caption);
+  const html = `<figure id="${blockId}">
+    <img alt="${caption}" src="/${filename}">
+    <figcaption>${caption}</figcaption>
+  </figure>`;
 
-    if (fs.existsSync(dest)) {
-      resolve(html);
-    } else {
-      https.get(block.image.file.url, (res) => {
-        res
-          .pipe(dest)
-          .on("finish", () => {
-            resolve(html);
-          })
-          .on("error", () => {
-            console.log("Image failed to write", block);
-            resolve();
-          });
-      });
-    }
-  });
+  if (fse.existsSync(destPath)) {
+    return html;
+  } else {
+    // download the image
+    downloadImageToPath(block.image.file.url, destPath);
+
+    return html;
+  }
 }
 
 async function blockToHtml(block, pageId, allPages) {
@@ -325,18 +315,24 @@ async function blockToHtml(block, pageId, allPages) {
   } else if (
     block.type === "embed" &&
     block.embed.url &&
-    block.embed.url.startsWith("https://twitter.com")
+    TWITTER_URL_REGEX.test(block.embed.url)
   ) {
-    // TODO: better validate that this is actually a tweet link
-    // TODO: cache to tweets.json or something so I'm not hitting the twitter API on every build for every tweet
+    const tweetsPath =
+      config.tweetEmbeds.cache && path.join(outputDir, "tweets.json");
 
-    const tweetHtml = await fetchTweetEmbedHTML(block.embed.url)
-    const nonDirtyTweetHtml = tweetHtml.split('\n')[0] // strip out twitter's JS injection
+    const tweetHtml = await getTweetEmbedHTML(block.embed.url, tweetsPath);
+
+    const nonDirtyTweetHtml = tweetHtml.split("\n")[0]; // strip out twitter's JS injection
 
     // if you want stuff like RT count, like count, styling, etc. switch config.tweetEmbeds.includeExternalSrc to TRUE
     // just note that twitter is injecting gross analytics stuff on your site
 
-    return !config.tweetEmbeds.includeExternalSrc ? nonDirtyTweetHtml : tweetHtml
+    return !config.tweetEmbeds.includeExternalSrc
+      ? nonDirtyTweetHtml
+      : tweetHtml;
+  } else if (block.type === "link_to_page") {
+    registerBacklink(pageId, block.link_to_page.page_id);
+    return linkOfId(allPages, block.link_to_page.page_id);
   } else {
     console.log("Unrecognized block --", block);
   }
@@ -382,9 +378,9 @@ function groupBy(blocks, type, result_type) {
 const backlinks = {};
 const registerBacklink = (sourceId, destinationId) => {
   if (backlinks[destinationId]) {
-    backlinks[destinationId].push(sourceId);
+    backlinks[destinationId].add(sourceId);
   } else {
-    backlinks[destinationId] = [sourceId];
+    backlinks[destinationId] = new Set([sourceId]);
   }
 };
 
@@ -408,32 +404,25 @@ async function saveFavicon(emoji) {
   const basename = emojiToBaseName(emoji);
   const filename = emojiToFileName(emoji);
 
-  if (!fs.existsSync(filename)) {
+  if (!fse.existsSync(filename)) {
     console.log("Unknown emoji --", emoji);
   }
   const dest = path.join(outputDir, basename);
-  if (!fs.existsSync(dest)) {
-    await fsPromises.copyFile(filename, dest);
-  }
+  await fse.copy(filename, dest, { overwrite: false }); // only copy if it doesn't already exist
   return basename;
 }
 
 const storePagesJson = (allPages) =>
-  fsPromises.writeFile(
-    path.join(outputDir, "pages.json"),
-    JSON.stringify(allPages)
-  );
+  fse.writeJson(path.join(outputDir, "pages.json"), allPages);
 
-const build = async () => {
+const build = async (outputDirectory) => {
   // tell prism (syntax highlighter) to use the languages in config.prism.loadLanguages
   loadLanguages(config.prism.loadLanguages);
 
   const pages = [];
 
-  // Make sure outputDir exists
-  if (!fs.existsSync(outputDir)) {
-    await fsPromises.mkdir(outputDir);
-  }
+  // Make sure outputDirectory exists
+  await fse.ensureDir(outputDirectory);
 
   const { secret: token, databaseId: database } = config.notion;
 
@@ -479,9 +468,9 @@ const build = async () => {
 
   Promise.all([
     ...pages.map((page) => savePage(page, backlinks, pages)),
-    copyStaticAssets(),
+    copyStaticAssets(outputDirectory),
     storePagesJson(pages),
   ]);
 };
 
-build();
+build(outputDir);

@@ -43,6 +43,7 @@
         }
     },
     "tweetEmbeds": {
-        "includeExternalSrc": false
+        "includeExternalSrc": false,
+        "cache": true
     }
 }

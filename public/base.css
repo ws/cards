@@ -241,10 +241,11 @@ hr {
 .callout {
   display: flex;
   width: 100%;
-  border-radius: 3 px;
+  border-radius: 3px;
   background: rgb(241, 241, 239);
-  padding: 16 px 16 px 16 px 12 px;
+  padding: 16px 16px 16px 12px;
   margin: 1 em 0;
+  word-break: break-all;
 }
 
 @media (max-width: 660px) {
