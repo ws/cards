@@ -28,6 +28,9 @@ const { NOTION_DATE_STR_REGEX, TWITTER_URL_REGEX } = require("./lib/consts");
 // build here
 const outputDir = path.join(__dirname, config.outputDirectory);
 
+// tell nunjucks to look for views in views/
+nunjucks.configure("views");
+
 let id = 1;
 function getDeterministicUUID() {
   // grab the sha of the current commit
@@ -38,6 +41,17 @@ function getDeterministicUUID() {
   shasum.update("" + id++);
   return addDashes(shasum.digest("hex"));
 }
+
+// todo: doc + put elsewhere
+const defaultPageFilename = (id) => `${id.replace(/-/g, "").slice(0, 8)}.html`;
+
+// todo: doc + put elsewhere
+const pageFilename = (id, properties) =>
+  (properties.Filename ? concatenateText(properties.Filename.rich_text) : "") ||
+  defaultPageFilename(id);
+
+// todo: doc + put elsewhere
+const imageFilename = (block) => `${block.id}.png`;
 
 async function textToHtml(pageId, text, allPages) {
   if (text.type === "text") {
@@ -156,6 +170,13 @@ const linkOfId = (allPages, id, args = {}) => {
   }
 };
 
+// creates a file that just redirects to wherever it's told to redirect
+// helpful for permalinks
+const saveRedirect = async (from, to) => {
+  const content = nunjucks.render("redirect.html", { to });
+  await fse.writeFile(path.join(outputDir, from), content);
+};
+
 async function savePage(
   { id, title, favicon, content, filename, emoji, emojiAltText },
   backlinks,
@@ -168,7 +189,7 @@ async function savePage(
       return page;
     });
 
-  const body = nunjucks.render("template.html", {
+  const body = nunjucks.render("card.html", {
     id,
     title,
     favicon,
@@ -184,11 +205,17 @@ async function savePage(
   const formattedBody = indent.html(body);
 
   await fse.writeFile(path.join(outputDir, filename), formattedBody);
+  await saveRedirect(`${id}.html`, filename);
+
+  // if you have a card and then later set a filename, instead of killing the link, this will forward it to the new filename
+  if (filename != defaultPageFilename(id)) {
+    await saveRedirect(defaultPageFilename(id), filename);
+  }
 }
 
 function downloadImageBlock(block, blockId) {
-  const filename = `${block.id}.png`;
-  const destPath = path.join(outputDir, `${block.id}.png`);
+  const filename = imageFilename(block);
+  const destPath = path.join(outputDir, filename);
 
   const caption = concatenateText(block.image.caption);
   const html = `<figure id="${blockId}">
@@ -302,7 +329,7 @@ async function blockToHtml(block, pageId, allPages) {
       ${children.join("\n")}
     </blockquote>`;
   } else if (block.type === "divider") {
-    return "<hr />";
+    return `<hr id="${blockId}" />`;
   } else if (block.type === "unsupported") {
     return "[unsupported]";
   } else if (block.type === "callout") {
@@ -435,10 +462,7 @@ const build = async (outputDirectory) => {
     const children = await getChildren(notion, id);
     const favicon = await saveFavicon(emoji || config.defaultFavicon);
 
-    const filename =
-      (properties.Filename
-        ? concatenateText(properties.Filename.rich_text)
-        : "") || `${id.replace(/-/g, "").slice(0, 8)}.html`;
+    const filename = pageFilename(id, properties);
 
     const blocks = groupBy(
       groupBy(children, "numbered_list_item", "numbered_list"),

@@ -21,7 +21,7 @@
   "scripts": {
     "build": "node index.js",
     "serve": "npx serve build",
-    "dev": "nodemon -i build index.js && npm run serve",
+    "dev": "nodemon -e js,json,css,html -i build index.js",
     "nuke": "rm -rf build"
   }
 }

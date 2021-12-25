@@ -1,0 +1,17 @@
+{# This is a nunjuck template -#}
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="refresh" content="0; url={{to}}" />
+    <script type="text/javascript">
+      window.location.href = "{{to}}";
+    </script>
+    <title>You are being redirected...</title>
+  </head>
+  <body>
+    If you are not redirected automatically, follow this
+    <a href="{{to}}">link</a>.
+  </body>
+</html>

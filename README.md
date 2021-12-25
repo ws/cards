@@ -11,6 +11,7 @@ Some notable changes:
 - link_to_page support
 - tweet embeds (with or without twitter styling/tracking) (caches to build/tweets.json)
 - footer backlink de-duplication (in case you link to the same page twice)
+- creates logical redirects (eg canonical_id_with_dashes.html always, short_id.html when a different pagename is used, etc.)
 
 ## cards
 

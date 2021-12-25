@@ -23,9 +23,12 @@
 		{% if config.meta.twitter.site %}<meta name="twitter:site" content="{{ config.meta.twitter.site }}" />{% endif %}
 		{%- endif %}
 
-		{% for page in config.copy.css -%}
-			<link rel="stylesheet" href="/{{ page.split('/').pop() }}">
-		{% endfor -%}
+		<link rel="stylesheet" href="/base.css">
+		<link rel="stylesheet" href="/style.css">
+		<link rel="preload" href="/prism-coy.css" as="style">
+		<link rel="preload" href="/prism-tomorrow.css" as="style">
+		<link id="prism" rel="stylesheet" href="/prism-coy.css">
+		<link rel="stylesheet" href="/katex.min.css">
 	</head>
 	<body>
 		<main class="p{{ id | truncate(8, true, "") }}">
